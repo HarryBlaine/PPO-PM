@@ -37,6 +37,7 @@ class CustomEnv(gym.Env):
     def step(self, action):
         # Execute one time step within the environment
         self._take_action(action)
+
         if action == 3 or action == 14:
 
             weights = self.result.B

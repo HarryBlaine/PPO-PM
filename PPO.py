@@ -105,11 +105,11 @@ class PPO(nn.Module):
 
 def main():
 
-    df = pd.read_csv('./Stock Market/DAX_close.csv')
+    df = pd.read_csv('./Stock Market/FTSE_close.csv')
     df_original_train = df.head(round(0.8*len(df)))
     df_original_test = df.tail(round(0.2*len(df)))
 
-    df_ob = pd.read_csv('./Stock Market/DAX_final.csv')
+    df_ob = pd.read_csv('./Stock Market/FTSE_final.csv')
     df_ob_train = df_ob.head(round(0.8 * len(df)))
     df_ob_test = df_ob.tail(round(0.2 * len(df)))
     train_set = (df_ob_train - np.mean(df_ob_train.to_numpy())) / np.std(df_ob_train.to_numpy())
@@ -122,7 +122,7 @@ def main():
     test_set = pd.DataFrame(test_set)
 
     env = CustomEnv(df_original_train, train_set)
-    model = PPO(340*5+1, 15)
+    model = PPO(880*5+1, 15)
     #pkl_file = open('model/third.pkl', 'rb')
     #model = pickle.load(pkl_file)
     n_epi = 0
@@ -147,6 +147,7 @@ def main():
         train_reward_list = 1
         action_list = []
         while(done == False):
+
             t = t+1
             h_in = h_out
             prob, h_out = model.pi(torch.from_numpy(s.reshape(-1)).float(), h_in)
@@ -169,7 +170,6 @@ def main():
             if action == most_action and action_counter > total_step//3:
                 r = r - 1
                 punishment = 1
-                #s = np.append(s, punishment)
                 s[len(s) - 1] = punishment
             else:
                 punishment = 0
@@ -183,6 +183,7 @@ def main():
 
             pr = pr / 20
             train_reward_list = train_reward_list * (pr + 1)
+
             if done:
                 break
         print("# of episode :{} steps :{} total_wealth :{}".format(n_epi,t,train_reward_list))
@@ -195,7 +196,7 @@ def main():
             pickle.dump(model, open(model_name, 'wb'))
         model.train_net()
         a = 0
-        if n_epi% 1 == 0:
+        if n_epi% 10 == 0:
             test_action_list = []
             model.eval()
             env = CustomEnv(df_original_test,test_set)
@@ -227,8 +228,8 @@ def main():
                 a = a+1
                 r = r / 20
                 test_action_list.append(action)
-                test_action_counter = max(np.bincount(action_list))
-                test_most_action = np.argmax(np.bincount(action_list))
+                test_action_counter = max(np.bincount(test_action_list))
+                test_most_action = np.argmax(np.bincount(test_action_list))
 
                 if action == test_most_action and test_action_counter > total_step_test // 3:
                     punishment = 1
@@ -250,12 +251,12 @@ def main():
     plt_test_reward = np.array(total_test_reward)
 
     plt.plot(plt_train_reward)
-    p1 = "./image/train_image_2"
+    p1 = "./image/train_image_3"
     plt.savefig(p1)
     plt.figure()
     plt.plot(plt_test_reward)
 
-    p2 = "./image/test_image_2"
+    p2 = "./image/test_image_3"
     plt.savefig(p2)
     plt.show()
     env.close()
