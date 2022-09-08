@@ -25,6 +25,7 @@ class PPO(nn.Module):
         self.fc_v  = nn.Linear(32,1)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
+
     def pi(self, x, hidden):
         x = F.relu(self.fc1(x))
         x = x.view(-1, 1, 64)
