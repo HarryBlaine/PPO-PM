@@ -28,21 +28,19 @@ class PPO(nn.Module):
         self.fc1 = nn.Linear(input_size, 9408)
         #self.lstm = nn.LSTM(64, 32)
         self.resnet = RestNet18()
-        self.fc_pi = nn.Linear(4950, action_num)
-        self.fc_v = nn.Linear(4950, 1)
+        self.fc_pi = nn.Linear(1500, action_num)
+        self.fc_v = nn.Linear(1500, 1)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
 
     def pi(self, x):
-        x = x.reshape(-1,120)
-        #print(x.shape)
+        x = x.reshape(-1,33)
         x = F.relu(self.fc1(x))
-        #x = x.unsqueeze(1)
         x = x.view(-1, 3, 49, 64)
         x = self.resnet(x)
         #print(x.shape)
         x = x.unsqueeze(1)
-        x = x.view(-1, 1, 4950)
+        x = x.view(-1, 1, 1500)
         x = self.fc_pi(x)
         #print(x.shape)
         prob = F.softmax(x, dim=2)
@@ -50,9 +48,8 @@ class PPO(nn.Module):
 
     
     def v(self, x):
-        x = x.reshape(-1, 120)
+        x = x.reshape(-1, 33)
         x = F.relu(self.fc1(x))
-        #x = x.view(-1, 1, 64)
         x = x.view(-1, 3, 49, 64)
         x = self.resnet(x)
         x = x.unsqueeze(1)
@@ -103,7 +100,7 @@ class PPO(nn.Module):
             advantage_lst.reverse()
             advantage = torch.tensor(advantage_lst, dtype=torch.float)
             #print(s.shape)
-            pi = self.pi_2(s)
+            pi = self.pi(s)
             #print(pi.shape)
             pi_a = pi.squeeze(1).gather(1,a)
             ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == log(exp(a)-exp(b))
@@ -123,21 +120,13 @@ def main():
     df_original_train = df.head(round(0.6*len(df)))
     df_original_test = df.tail(round(0.4*len(df)))
 
-    df_ob = pd.read_csv('./new_data/DAX_final(feature).csv')
+    df_ob = pd.read_csv('./new_data/DAX_close.csv')
     df_ob = df_ob.tail(round(0.5 * len(df_ob)))
     df_ob_train = df_ob.head(round(0.6 * len(df_ob)))
     df_ob_test = df_ob.tail(round(0.4 * len(df_ob)))
-    #train_set = (df_ob_train - np.mean(df_ob_train.to_numpy())) / np.std(df_ob_train.to_numpy())
-    #test_set = (df_ob_test - np.mean(df_ob_train.to_numpy())) / np.std(df_ob_train.to_numpy())
-
-    #train_set = pd.DataFrame(train_set)
-    #test_set = pd.DataFrame(test_set)
-
-    #train_set = pd.DataFrame(train_set)
-    #test_set = pd.DataFrame(test_set)
 
     env = CustomEnv(df_original_train, df_ob_train)
-    model = PPO(120, 15)
+    model = PPO(df_ob_train.shape[1], 15)
     #pkl_file = open('model_DAX/first.pkl', 'rb')
     #model = pickle.load(pkl_file)
     n_epi = 0
@@ -200,7 +189,7 @@ def main():
             pickle.dump(model, open(model_name, 'wb'))
 
         a = 0
-        if n_epi% 5 == 0:
+        if n_epi% 1 == 0:
             model.train_net()
 
         if n_epi% 10 == 0:
