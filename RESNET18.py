@@ -31,11 +31,11 @@ class RestNetDownBlock(nn.Module):
             nn.BatchNorm2d(out_channels)
         )
 
+
     def forward(self, x):
         extra_x = self.extra(x)
         output = self.conv1(x)
         out = F.relu(self.bn1(output))
-
         out = self.conv2(out)
         out = self.bn2(out)
         return F.relu(extra_x + out)
@@ -44,7 +44,7 @@ class RestNetDownBlock(nn.Module):
 class RestNet18(nn.Module):
     def __init__(self):
         super(RestNet18, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3)
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=12, stride=1, padding=3)
         self.bn1 = nn.BatchNorm2d(64)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -62,7 +62,7 @@ class RestNet18(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1, 1))
 
-        self.fc = nn.Linear(512, 150)
+        self.fc = nn.Linear(512, 64)
 
     def forward(self, x):
         out = self.conv1(x)

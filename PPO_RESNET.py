@@ -25,37 +25,26 @@ class PPO(nn.Module):
     def __init__(self, input_size,action_num):
         super(PPO, self).__init__()
         self.data = []
-        self.fc1 = nn.Linear(input_size, 9408)
-        #self.lstm = nn.LSTM(64, 32)
+        self.fc1 = nn.Linear(input_size, 64)
         self.resnet = RestNet18()
-        self.fc_pi = nn.Linear(1500, action_num)
-        self.fc_v = nn.Linear(1500, 1)
+        self.fc_pi = nn.Linear(64, action_num)
+        self.fc_v = nn.Linear(64, 1)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
-
     def pi(self, x):
-        x = x.reshape(-1,33)
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 3, 49, 64)
+        x = x.view(-1, 1, 10, 64)
         x = self.resnet(x)
-        #print(x.shape)
-        x = x.unsqueeze(1)
-        x = x.view(-1, 1, 1500)
         x = self.fc_pi(x)
-        #print(x.shape)
+        x = x.view(-1, 1, 15)
         prob = F.softmax(x, dim=2)
         return prob
 
-    
     def v(self, x):
-        x = x.reshape(-1, 33)
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 3, 49, 64)
+        x = x.view(-1, 1, 10, 64)
         x = self.resnet(x)
-        x = x.unsqueeze(1)
-        x = x.view(-1, 1, 1500)
         v = self.fc_v(x)
-
         return v
 
     def put_data(self, transition):
@@ -99,9 +88,7 @@ class PPO(nn.Module):
                 advantage_lst.append([advantage])
             advantage_lst.reverse()
             advantage = torch.tensor(advantage_lst, dtype=torch.float)
-            #print(s.shape)
             pi = self.pi(s)
-            #print(pi.shape)
             pi_a = pi.squeeze(1).gather(1,a)
             ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))  # a/b == log(exp(a)-exp(b))
 
@@ -116,11 +103,16 @@ class PPO(nn.Module):
 def main():
 
     df = pd.read_csv('./new_data/DAX_close.csv')
-    df = df.tail(round(0.5*len(df)))
+    df.drop(df.head(10).index, inplace=True)
+    df.drop(df.tail(5).index, inplace=True)
+    df = df.tail(round(0.5 * len(df)))
     df_original_train = df.head(round(0.6*len(df)))
     df_original_test = df.tail(round(0.4*len(df)))
 
-    df_ob = pd.read_csv('./new_data/DAX_close.csv')
+    df_ob = pd.read_csv('./new_data/DAX_final(feature).csv')
+
+    df_ob.drop(df_ob.head(10).index, inplace=True)
+    df_ob.drop(df_ob.tail(5).index, inplace=True)
     df_ob = df_ob.tail(round(0.5 * len(df_ob)))
     df_ob_train = df_ob.head(round(0.6 * len(df_ob)))
     df_ob_test = df_ob.tail(round(0.4 * len(df_ob)))
@@ -134,36 +126,33 @@ def main():
     total_test_reward = []
     total_train_reward = []
 
-    while(n_epi!= 6000):
+    while(n_epi!= 1000):
 
         model.train()
-        env = CustomEnv(df_original_train,df_ob_train)
-        n_epi +=1
-        #h_out = (torch.zeros([1, 1, 32], dtype=torch.float), torch.zeros([1, 1, 32], dtype=torch.float))
-        s = env.reset(False) # observation
+        env = CustomEnv(df_original_train, df_ob_train)
+        n_epi += 1
+        s = env.reset(False)  # observation
         s = s.to_numpy()
         total_step = len(df_ob_train)//10 - 2
         done = False
         t = 0
         train_reward_list = 1
         action_list = []
-        while(done == False):
-
+        while not done:
             t = t+1
-
-            prob= model.pi(torch.from_numpy(s).float())
+            prob = model.pi(torch.from_numpy(s).float())
             prob = prob.view(-1)
 
             try:
                 m = Categorical(prob)
+
             except:
                 exit()
 
             action = m.sample().item()
             #print(action)
-            next_s, r, done, _= env.step(action)
+            next_s, r, done, _ = env.step(action)
             pr = r
-
             action_list.append(action)
             action_counter = max(np.bincount(action_list))
             most_action = np.argmax(np.bincount(action_list))
@@ -184,7 +173,7 @@ def main():
         total_train_reward.append(train_reward_list)
 
         if  n_epi% 100 == 0:
-            model_name = './model_DAX/'+ str(n_epi) + '.pkl'
+            model_name = './model_DAX_3/'+ str(n_epi) + '.pkl'
             plt.clf() 
             pickle.dump(model, open(model_name, 'wb'))
 
@@ -196,12 +185,12 @@ def main():
 
             test_action_list = []
             model.eval()
-            env = CustomEnv(df_original_test,df_ob_test)
+            env = CustomEnv(df_original_test, df_ob_test)
             s = env.reset(False)  # observation
             done = False
             t = 0
             test_reward_list = 1
-            while (done == False):
+            while not done:
                 s = s.to_numpy()
                 t = t + 1
 
@@ -233,14 +222,14 @@ def main():
     plt.plot(plt_train_reward, 'y')
     y = savgol_filter(plt_train_reward, 51, 3, mode='nearest')
     plt.plot(y, 'b')
-    p1 = "./image/train_image_DAX_1"
+    p1 = "./image/train_image_DAX_3"
     plt.savefig(p1)
     plt.figure()
 
     plt.plot(plt_test_reward,'y')
     y = savgol_filter(plt_test_reward, 17, 3, mode='nearest')
     plt.plot(y, 'b')
-    p2 = "./image/test_image_DAX_1"
+    p2 = "./image/test_image_DAX_3"
     plt.savefig(p2)
     plt.show()
     env.close()

@@ -28,30 +28,25 @@ class PPO(nn.Module):
     def __init__(self, input_size, action_num):
         super(PPO, self).__init__()
         self.data = []
-        self.fc1 = nn.Linear(input_size, 9408)
+        self.fc1 = nn.Linear(input_size, 64)
         self.resnet = RestNet18()
-        self.fc_pi = nn.Linear(1500, action_num)
-        self.fc_v = nn.Linear(1500, 1)
+        self.fc_pi = nn.Linear(64, action_num)
+        self.fc_v = nn.Linear(64, 1)
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
     def pi(self, x):
-        x = x.reshape(-1, 396)
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 3, 49, 64)
+        x = x.view(-1, 1, 10, 64)
         x = self.resnet(x)
-        x = x.unsqueeze(1)
-        x = x.view(-1, 1, 1500)
         x = self.fc_pi(x)
+        x = x.view(-1, 1, 15)
         prob = F.softmax(x, dim=2)
         return prob
 
     def v(self, x):
-        x = x.reshape(-1, 396)
         x = F.relu(self.fc1(x))
-        x = x.view(-1, 3, 49, 64)
+        x = x.view(-1, 1, 10, 64)
         x = self.resnet(x)
-        x = x.unsqueeze(1)
-        x = x.view(-1, 1, 1500)
         v = self.fc_v(x)
         return v
 
@@ -117,20 +112,16 @@ def training_job(model, reset_value, df_original_train, df_ob_train, n_epi, lock
 
     tep_data = []
     s = env.reset(reset_value)  # observation
-
     s = s.to_numpy()
     total_step = len(df_ob_train) // 10 - 2
     done = False
     t = 0
     train_reward_list = 1
     action_list = []
-    while (done == False):
-
+    while not done:
         t = t + 1
-
         prob = model.pi(torch.from_numpy(s).float())
         prob = prob.view(-1)
-
         try:
             m = Categorical(prob)
         except:
@@ -187,19 +178,20 @@ def main():
     # pkl_file = open('model_DAX/first.pkl', 'rb')
     # model = pickle.load(pkl_file)
     n_epi = 0
+    best_reward = 0
     lock = multiprocessing.Manager().Lock()
     total_test_reward = []
 
     global total_train_reward
     total_train_reward = []
-    reset_value = 0
-    while (n_epi != 50):
+    #reset_value = 0
+    while (n_epi != 3000):
+
         model.train()
         env = CustomEnv(df_original_train, df_ob_train)
         # n_epi +=1
         threads = []
         pool = multiprocessing.Pool(processes=10)
-
         for i in range(10):
             threads.append(pool.apply_async(training_job, (model, i, df_original_train, df_ob_train, n_epi, lock)))
         pool.close()
@@ -212,13 +204,12 @@ def main():
                 model.put_data(result)
 
         if n_epi % 100 == 0:
-            model_name = './model_DAX/' + str(n_epi) + '.pkl'
+            model_name = './model_DAX_3/' + str(n_epi) + '.pkl'
             plt.clf()
             pickle.dump(model, open(model_name, 'wb'))
 
         a = 0
         if n_epi % 10 == 0:
-            pre_model = model
             model.train_net()
 
         if n_epi % 10 == 0:
@@ -255,11 +246,12 @@ def main():
                     break
             total_test_reward.append(test_reward_list)
             print("# Testing!!!Step: {}, total_wealth :{}".format(t, test_reward_list))
-            if n_epi != 10:
-                if test_reward_list < 0.8 * pre_test_reward:
-                    print("not update!")
-                    model = pre_model
-            pre_test_reward = test_reward_list
+            if test_reward_list >= best_reward:
+                model_name = './model_DAX_3/best.pkl'
+                plt.clf()
+                pickle.dump(model, open(model_name, 'wb'))
+                best_reward = test_reward_list
+
 
     plt_train_reward = np.array(total_train_reward)
 
@@ -268,14 +260,14 @@ def main():
     plt.plot(plt_train_reward, 'y')
     y = savgol_filter(plt_train_reward, 51, 3, mode='nearest')
     plt.plot(y, 'b')
-    p1 = "./image/train_image_DAX_MP"
+    p1 = "./image/train_image_DAX_RESNET"
     plt.savefig(p1)
     plt.figure()
 
     plt.plot(plt_test_reward, 'y')
     y = savgol_filter(plt_test_reward, 17, 3, mode='nearest')
     plt.plot(y, 'b')
-    p2 = "./image/test_image_DAX_MP"
+    p2 = "./image/test_image_DAX_RESNET"
     plt.savefig(p2)
     plt.show()
     env.close()
