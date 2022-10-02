@@ -92,7 +92,7 @@ class PPO(nn.Module):
             advantage_lst.reverse()
             advantage = torch.tensor(advantage_lst, dtype=torch.float)
 
-            pi, _ = self.pi(s)
+            pi = self.pi(s)
 
             pi_a = pi.squeeze(1).gather(1, a)
 
@@ -162,16 +162,16 @@ def main():
     df = pd.read_csv('./new_data/DAX_close.csv')
     df.drop(df.head(10).index, inplace=True)
     df.drop(df.tail(5).index, inplace=True)
-    # df = df.tail(round(0.5*len(df)))
-    df_original_train = df.head(round(0.8 * len(df)))
-    df_original_test = df.tail(round(0.2 * len(df)))
+    df = df.tail(round(0.5*len(df)))
+    df_original_train = df.head(round(0.6 * len(df)))
+    df_original_test = df.tail(round(0.4 * len(df)))
 
     df_ob = pd.read_csv('./new_data/DAX_final(feature).csv')
     df_ob.drop(df_ob.head(10).index, inplace=True)
     df_ob.drop(df_ob.tail(5).index, inplace=True)
-    # df_ob = df_ob.tail(round(0.5 * len(df_ob)))
-    df_ob_train = df_ob.head(round(0.8 * len(df_ob)))
-    df_ob_test = df_ob.tail(round(0.2 * len(df_ob)))
+    df_ob = df_ob.tail(round(0.5 * len(df_ob)))
+    df_ob_train = df_ob.head(round(0.6 * len(df_ob)))
+    df_ob_test = df_ob.tail(round(0.4 * len(df_ob)))
 
     env = CustomEnv(df_original_train, df_ob_train)
     model = PPO(df_ob_train.shape[1], 15)
@@ -226,7 +226,7 @@ def main():
                 s = s.to_numpy()
                 t = t + 1
 
-                prob, h_out = model.pi(torch.from_numpy(s).float())
+                prob = model.pi(torch.from_numpy(s).float())
                 prob = prob.view(-1)
                 np_array = prob.detach().numpy()
                 count = np_array.shape[0]
