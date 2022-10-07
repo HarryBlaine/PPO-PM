@@ -178,7 +178,7 @@ def main():
             pickle.dump(model, open(model_name, 'wb'))
 
         a = 0
-        if n_epi% 1 == 0:
+        if n_epi% 10 == 0:
             model.train_net()
 
         if n_epi% 10 == 0:
