@@ -149,10 +149,11 @@ def training_job(model,reset_value,df_original_train,df_ob_train,n_epi,lock):
         next_s = next_s.to_numpy()
 
         lock.acquire()
-        tep_data.append((s, action, r, next_s, prob[action].item(), h_in, h_out, done))
-        #model.put_data((s, action, r, next_s, prob[action].item(), h_in, h_out, done))
+        new_h_in = (h_in[0].detach(),h_in[1].detach())
+        new_h_out = (h_out[0].detach(), h_out[1].detach())
+        a = (s, action, r, next_s, prob[action].item(), new_h_in, new_h_out, done)
+        tep_data.append(a)
         lock.release()
-
         s = next_s
         train_reward_list = train_reward_list * (pr + 1)
 
@@ -162,6 +163,8 @@ def training_job(model,reset_value,df_original_train,df_ob_train,n_epi,lock):
     print("# of episode :{} steps :{} total_wealth :{}".format(n_epi+reset_value, t, train_reward_list))
     print("most_action is: " + str(most_action) + "   counter: " + str(action_counter))
     #total_train_reward.append(train_reward_list)
+    #pipe.send(tep_data)
+    #print("send")
     lock.release()
     return tep_data
 
@@ -186,7 +189,6 @@ def main():
    #pkl_file = open('model_DAX/first.pkl', 'rb')
     #model = pickle.load(pkl_file)
     n_epi = 0
-    #global lock
     lock = multiprocessing.Manager().Lock()
     total_test_reward = []
 
@@ -199,14 +201,17 @@ def main():
         #n_epi +=1
         threads = []
         pool = multiprocessing.Pool(processes=10)
+        #pipe_dict = dict((i, (pipe1, pipe2)) for i in range(10) for pipe1, pipe2 in (multiprocessing.Pipe(),))
         for i in range(10):
             threads.append(pool.apply_async(training_job,(model,i,df_original_train,df_ob_train,n_epi,lock)))
-
         pool.close()
         pool.join()
+
         n_epi = n_epi+10
-        for res in threads:
-            model.put_data(res.get())
+        for res  in threads:
+            results = res.get()
+            for result in results:
+                model.put_data(result)
 
         if  n_epi% 100 == 0:
             model_name = './model_DAX_2/'+ str(n_epi) + '.pkl'

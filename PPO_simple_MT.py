@@ -216,7 +216,7 @@ def main():
 
         a = 0
         if n_epi % 10 == 0:
-            pre_model = model
+
             model.train_net()
 
         if n_epi % 10 == 0:
@@ -272,7 +272,7 @@ def main():
     plt.plot(plt_test_reward, 'y')
     y = savgol_filter(plt_test_reward, 17, 3, mode='nearest')
     plt.plot(y, 'b')
-    p2 = "./image/test_image_DAX2"
+    p2 = "./image/test_image_DAX_2"
     plt.savefig(p2)
     plt.show()
     env.close()

@@ -155,7 +155,7 @@ def training_job(model, reset_value, df_original_train, df_ob_train, n_epi, lock
     # pipe.send(tep_data)
     # print("send")
     lock.release()
-    return tep_data
+    return tep_data, train_reward_list
 
 
 def main():
@@ -185,7 +185,7 @@ def main():
     global total_train_reward
     total_train_reward = []
     #reset_value = 0
-    while (n_epi != 3000):
+    while (n_epi != 6000):
 
         model.train()
         env = CustomEnv(df_original_train, df_ob_train)
@@ -199,7 +199,12 @@ def main():
 
         n_epi = n_epi + 10
         for res in threads:
-            results = res.get()
+            results, train_reward_list= res.get()
+            Note = open('./DAX_data/training(RESNET).txt', mode='w')
+            Note.write(str(total_train_reward))
+            Note.write("\r\n")
+            Note.close()
+            total_train_reward.append(train_reward_list)
             for result in results:
                 model.put_data(result)
 
@@ -246,12 +251,16 @@ def main():
                     break
             total_test_reward.append(test_reward_list)
             print("# Testing!!!Step: {}, total_wealth :{}".format(t, test_reward_list))
+
+            Note_2 = open('./DAX_data/test(RESNET).txt', mode='w')
+            Note_2.write(str(total_test_reward))
+            Note_2.write("\r\n")
+            Note_2.close()
             if test_reward_list >= best_reward:
                 model_name = './model_DAX_3/best.pkl'
                 plt.clf()
                 pickle.dump(model, open(model_name, 'wb'))
                 best_reward = test_reward_list
-
 
     plt_train_reward = np.array(total_train_reward)
 
