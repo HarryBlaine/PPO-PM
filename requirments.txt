@@ -1,0 +1,4 @@
+universal-portfolios
+gym
+cvxopt==1.2.7 
+torch
