@@ -166,7 +166,7 @@ def main():
     df_original_train = df.head(round(0.8 * len(df)))
     df_original_test = df.tail(round(0.2 * len(df)))
 
-    df_ob = pd.read_csv('./new_data/DAX_final(feature).csv')
+    df_ob = pd.read_csv('./new_data/DAX_final(feature2).csv')
     df_ob.drop(df_ob.head(10).index, inplace=True)
     df_ob.drop(df_ob.tail(5).index, inplace=True)
     #df_ob = df_ob.tail(round(0.5 * len(df_ob)))
@@ -200,9 +200,8 @@ def main():
         n_epi = n_epi + 10
         for res in threads:
             results, train_reward_list= res.get()
-            Note = open('./DAX_data/training(RESNET).txt', mode='w')
-            Note.write(str(total_train_reward))
-            Note.write("\r\n")
+            Note = open('./DAX_data/training(RESNET).txt', mode='a')
+            Note.write(str(train_reward_list))
             Note.close()
             total_train_reward.append(train_reward_list)
             for result in results:
@@ -252,9 +251,8 @@ def main():
             total_test_reward.append(test_reward_list)
             print("# Testing!!!Step: {}, total_wealth :{}".format(t, test_reward_list))
 
-            Note_2 = open('./DAX_data/test(RESNET).txt', mode='w')
-            Note_2.write(str(total_test_reward))
-            Note_2.write("\r\n")
+            Note_2 = open('./DAX_data/test(RESNET).txt', mode='a')
+            Note_2.write(str(test_reward_list))
             Note_2.close()
             if test_reward_list >= best_reward:
                 model_name = './model_DAX_3/best.pkl'
