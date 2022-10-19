@@ -30,11 +30,22 @@ class CustomEnv(gym.Env):
 
     def give_next_observation(self):
         obs = self.df.iloc[self.current_state: self.current_state + 10, :]
-        Norm = pd.DataFrame()
+        """Norm = pd.DataFrame()
         for name in obs.columns.values.tolist():
             Norm[name] = (obs[name] - obs[name].min()) / (obs[name].max() - obs[name].min())
         Norm.fillna(0,inplace=True)
-        return Norm
+        obs = Norm"""
+        df_finnal2 = pd.DataFrame()
+        for i in range(10):
+            print(i)
+            df_finnal = pd.DataFrame()
+            for n in range(33):
+                df1 = obs.iloc[i:i + 1, n * 12:n * 12 + 12]
+                df1 = (df1 - np.min(df1.to_numpy())) / (np.max(df1.to_numpy()) - np.min(df1.to_numpy()))
+                df_finnal = pd.concat([df_finnal, df1], axis=1)
+            df_finnal2 = df_finnal2.append(df_finnal)
+        #obs.fillna(0,inplace=True)
+        return df_finnal2
 
     def _pre_observation(self):
 
